@@ -1,0 +1,124 @@
+tIDENT \"[A-Za-z_]+[A-Za-z0-9_]*\"
+tSTRING \'(\\.|[^'\\])*\'
+%{
+    int line = 1;
+%}
+
+%%
+\n line++;
+\t ;
+" " ;
+
+["]"Get"["] printf("%d tGET\n", line);
+["]"Set"["] printf("%d tSET\n", line);
+["]"Function"["] printf("%d tFUNCTION\n", line);
+["]"Print"["] printf("%d tPRINT\n", line);
+["]"For"["] printf("%d tFOR\n", line);
+["]"If"["] printf("%d tIF\n", line); 
+["]"Return"["] printf("%d tRETURN\n", line);
+
+"," printf("%d tCOMMA\n", line);
+\"\+\" printf("%d tPLUS\n", line);
+\"\*\" printf("%d tMUL\n", line);
+\"\+\+\" printf("%d tINC\n", line);
+"[" printf("%d tLBRAC\n", line);
+\">\" printf("%d tGT\n", line);
+\">=\" printf("%d tGEQ\n", line);
+\"==\" printf("%d tEQUALITY\n", line);
+\"-\" printf("%d tMINUS\n", line);
+\"\/\" printf("%d tDIV\n", line);
+\"--\" printf("%d tDEC\n", line);
+"]" printf("%d tRBRAC\n", line);
+\"<\" printf("%d tLT\n", line);
+\"<=\" printf("%d tLEQ\n", line);
+
+{tIDENT} {
+    char *result = yytext + 1;
+    result[strlen(result) - 1] = '\0';
+    printf("%d tIDENT (%s)\n", line, result);
+}
+{tSTRING} { 
+    char *result = yytext + 1;
+    result[strlen(result) - 1] = '\0';
+    printf("%d tSTRING (%s)\n", line, result);
+    int i;
+    for (i = 0; i < yyleng; i++) {
+        if (yytext[i] == '\n')
+            line++;
+    }
+}
+
+(-?[0-9]+\.[0-9]+) { // Calculate value of reals
+    char* value = (char*)malloc(sizeof(char) * yyleng);
+    int i = 0, j = 0;
+    if (yytext[i] == '-') { // If number is negative
+        value[j] = yytext[i];
+        i = 1; j = 1;
+    }
+    int sum = 0;
+    while (yytext[i] != '.') { // Numbers before '.'
+        int cur = yytext[i] - '0';
+        if (yytext[i] != '0') {
+            value[j] = yytext[i];
+            sum += cur;
+            i++; j++;
+        }
+        else {
+            if (sum != 0) {
+                value[j] = yytext[i];
+                sum += cur;
+                i++; j++;
+            }
+            else { 
+                i++;
+            }
+        }
+    }
+    if (sum == 0) {
+        value[j] = '0';
+        j++;
+    }
+    value[j] = yytext[i]; // Add '.'
+    i++; j++; // Increment index to '.' + 1;
+    int total = 0;
+    while (i < yyleng) { // Numbers after '.'
+        int k = i+1;
+        total = 0;
+        while (k < yyleng) {
+            int cur = yytext[k] - '0';
+            total += cur;
+            k++;
+        }
+        value[j] = yytext[i];
+        i++; j++;
+        if (total == 0 && k != yyleng - 1) { break; }
+    }
+    printf("%d tNUM (%s) (%s)\n", line, yytext, value);
+}
+
+(-?[0-9]+) { // Calculate value of integers
+    char* value = (char*)malloc(sizeof(char) * yyleng);
+    int i = 0, j = 0;
+    if (yytext[0] == '-') { // If number is negative
+        value[0] = yytext[0];
+        i = 1; j = 1;
+    }
+    int sum = 0;
+    while (yytext[i] == '0' && i < yyleng) { i++; }
+    while (i < yyleng) {
+        int cur = yytext[i] - '0';
+        value[j] = yytext[i];
+        sum += cur;
+        i++; j++;
+    }
+    if (sum == 0) { value[j] = '0'; }
+    printf("%d tNUM (%s) (%s)\n", line, yytext, value);
+}
+
+. printf("%d ILLEGAL CHARACTER (%s)\n", line, yytext);
+
+%%
+int main() {
+    yylex();
+    return 0;
+}
